@@ -211,15 +211,15 @@ object* mul_obj(object a, object b, const char* new_name){
     m->dat=(float*)malloc(n_el*sizeof(float));
     if (m->dat == NULL) return NULL;
     for(i=0;i<m->row;i++){
-        int riga_A = i * a.col;
-        int riga_M = i * m->col;
+        int row_A = i * a.col;
+        int row_M = i * m->col;
         for(j=0;j<m->col;j++){
-            float somma = 0.0f;
+            float sum = 0.0f;
             for(k=0;k<a.col;k++){
-                int riga_B = k * b.col;
-                somma += a.dat[riga_A + k] * b.dat[riga_B + j];
+                int row_B = k * b.col;
+                sum += a.dat[row_A + k] * b.dat[row_B + j];
             }
-            m->dat[riga_M + j] = somma;
+            m->dat[row_M + j] = sum;
         }
     }
     return m;

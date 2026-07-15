@@ -40,8 +40,8 @@ void menu_mini(int* choice){
     printf("Choose the operation\n");
     printf("([0] - print the full menu)\n([-1] - close the program)\n\n");
     printf("\t-> ");
-    if(scanf("%d",choice)!=1){ //eseguo la lettura e contemporaneamente controllo che sia avvenuta 
-        *choice=-2;     //valore sicuro che porta al case default
+    if(scanf("%d",choice)!=1){ //Checking if input is valid
+        *choice=-2;     //safe value that leads to the default case
     }
     clear_buffer();
 }
@@ -719,10 +719,7 @@ void m_power(object total[], int* counter){
 }
 
 void m_eigen(object total[], int* counter){
-    if(*counter>=MAX){
-        printf("Register is full! You cannot add more matrices\n");
-        return;
-    }
+    full_reg_check(*counter);
     char s[SD];
     object *m;
     printf("Enter the name of the square matrix\n\t-> ");
