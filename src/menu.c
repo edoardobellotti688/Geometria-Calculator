@@ -7,7 +7,7 @@
 void print_title() {
     printf("=========================================\n");
     printf("*                                       *\n");
-    printf("*         GEOMETRIA - VERSION 1.1       *\n");
+    printf("*       GEOMETRIA - VERSION 1.0.1       *\n");
     printf("*  Calculator for matrices and vectors  *\n");
     printf("*                                       *\n");
     printf("=========================================\n\n");
