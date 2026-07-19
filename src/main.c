@@ -1,13 +1,41 @@
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "geom.h"
 #include "tech.h"
 #include "menu.h"
 
-int main(void){
+int main(int argc, char** argv){
     int choice=0;
     int num_mat=0;  //logical dimension of the matrix-array
     object total[MAX];
+    char filename[FILENAME_MAX];
+    strcpy(filename,"data.bin");
+    int prec=6;
+    int dont_load_save=0; //boolean value set to 0 as default (load and save enabled)
+    for(int i=1;i<argc;i++){
+        if(strcmp(argv[i],"-h")==0) {
+            help_menu();
+            return 0;
+        }
+        else if(strcmp(argv[i],"-f")==0) file_choice(filename);
+        else if(strcmp(argv[i],"-p")==0){
+            int n=atoi(argv[i+1]);  //atoi converts a string to an integer
+            if(n<=0 || n>= 20){
+                printf("Warning: precision out of bounds (1-20). Using default (%d).\n\n",precision);
+            }
+            else precision=n;
+            i++; //doesn't read the next argv (it would be the new precision)
+        }
+        else if(strcmp(argv[i],"-d")==0) {
+            dont_load_save=1; //disable load and save
+            printf("Warning: loading and saving were disabled with flag '-d'\n\n");
+        } 
+    }
     print_title();
-    load("data.bin",total,&num_mat);
+    if(!dont_load_save){
+        load(filename,total,&num_mat);
+    }
     menu();
     do{
         menu_mini(&choice);
@@ -18,8 +46,8 @@ int main(void){
             case 1: m_create(total,&num_mat); break;
             case 2: m_print_obj(total,num_mat); break;
             case 3: m_del_obj(total,&num_mat); break;
-            case 4: m_sum_diff_obj(total,&num_mat,1.0f); break;
-            case 5: m_sum_diff_obj(total,&num_mat,-1.0f); break;
+            case 4: m_sum_diff_obj(total,&num_mat,1.0); break;
+            case 5: m_sum_diff_obj(total,&num_mat,-1.0); break;
             case 6: m_det(total, num_mat); break;
             case 7: m_scalar_mul(total,&num_mat); break;
             case 8: m_mul_obj(total,&num_mat); break;
@@ -38,6 +66,8 @@ int main(void){
             default: retry(); break;
         }
     }while(choice!=-1);
-    save("data.bin",total,num_mat);
+    if(!dont_load_save){
+        save(filename,total,num_mat);
+    }
     return 0;
 }

@@ -7,7 +7,7 @@
 void print_title() {
     printf("=========================================\n");
     printf("*                                       *\n");
-    printf("*       GEOMETRIA - VERSION 1.0.1       *\n");
+    printf("*       GEOMETRIA - VERSION 1.1.0       *\n");
     printf("*  Calculator for matrices and vectors  *\n");
     printf("*                                       *\n");
     printf("=========================================\n\n");
@@ -64,6 +64,57 @@ void not_existing_obj(const char* s){
     printf("ERROR: object '%s' does not exist\n\n",s);
 }
 
+void file_choice(char* filename){
+    printf("Which data file would you like to use?\n\n");
+    printf("[0]\tdata.bin (default)\n");
+    printf("[1]\tother\n");
+    int choice;
+    int res;
+    int val;
+    do{
+        printf("\t-> ");
+        res=scanf("%d",&choice);
+        clear_buffer();
+        val= (res!=1 || choice <0 || choice >1);
+        if(val){
+            printf("Invalid input. Please try again\n");
+        }
+    }while(val);
+    if(!choice){
+        strcpy(filename,"data.bin");
+        printf("Loading default file...\n");
+        return;
+    }
+    for(int i=0;i<4;i++){
+        printf("Enter data file name\n\n\t-> ");
+        scanf("%255s",filename);
+        clear_buffer();
+        if(file_exists(filename)){
+            printf("Loading file '%s'...\n",filename);
+            return;
+        }
+        printf("File named '%s' not found\n",filename);
+        printf("Would you like to create it?\n[y] = Yes\n[any other key] = No\n\t-> ");
+        char c;
+        scanf(" %c",&c);
+        clear_buffer();
+        if(c=='y' || c=='Y'){
+            create_file(filename);
+            return;
+        }
+    }
+    printf("Too many failed attempts. Loading default file...\n");
+    strcpy(filename,"data.bin");
+}
+
+void help_menu(){
+    printf("Usage: ./geometria OR geometria.exe [options]\n\n");
+    printf("Options:\n");
+    printf("\t-f                  Open a different data file with objects\n");
+    printf("\t-p <value>          Set custom printing precision (default: %d)\n",precision);
+    printf("\t-h                  Display this help message\n");
+    printf("\t-d                  Disable load from/save to data file\n");
+}
 /*Note: Most operations have a "menu" wrapper function (called in the switch-case)
 and a core math/logic function in geom.c that performs the actual computations.
 If the name of the function has 'm_' it means that it's used in the switch-case*/
@@ -129,7 +180,7 @@ void m_del_ALL_obj(object total[], int *counter){
     printf("All objects were deleted successfully\n\n");
 }
 
-void m_sum_diff_obj(object total[], int *counter, const float sign){
+void m_sum_diff_obj(object total[], int *counter, const double sign){
     if(full_reg_check(*counter)) return;
     char s[SD];
     object *a, *b;
@@ -163,7 +214,7 @@ void m_sum_diff_obj(object total[], int *counter, const float sign){
             printf("Object with name '%s' already exists\n\n",s);
         }
     } while(tmp!=NULL);
-    object *Sum=lin_comb_obj(*a,*b,1.0f,sign,s);  //call to geom.h
+    object *Sum=lin_comb_obj(*a,*b,1.0,sign,s);  //call to geom.h
     if(Sum==NULL) {
         printf("ERROR: memory allocation failed!\n\n");
         return;
@@ -194,23 +245,23 @@ void m_det(object total[], const int counter){
         printf("ERROR: non-square matrix\n\n");
         return;
     }
-    float D=det(*m);    //call to geom.h
+    double D=det(*m);    //call to geom.h
     if(isnan(D)){
         printf("ERROR: memory allocation failed during the computation\n\n");
         return;
     }
-    printf("\tdet(%s) = %f\n\n",(*m).name,D);
+    printf("\tdet(%s) = %10g\n\n",(*m).name,D);
 }
 
 void m_scalar_mul(object total[], int* counter){
     if(full_reg_check(*counter)) return;
     char s[SD];
-    float x;
+    double x;
     printf("Enter a real number\n");
     int read;
     do{
         printf("\t-> ");
-        read=scanf("%f",&x);
+        read=scanf("%lf",&x);
         clear_buffer();
         if(read!=1){
             printf("ERROR: invalid input. Please try again\n");
@@ -494,11 +545,11 @@ void m_lin_comb(object total[], int* counter){
         return;
     }
     int read;   //number of elements read by scanf
-    float c1,c2;//coefficients
+    double c1,c2;//coefficients
     printf("Enter the coefficient for %s\n",a->name);
     do{
         printf("\t-> ");
-        read=scanf("%f",&c1);
+        read=scanf("%lf",&c1);
         clear_buffer();
         if(read!=1){
             printf("Invalid input. Please try again\n");
@@ -507,7 +558,7 @@ void m_lin_comb(object total[], int* counter){
     printf("\nEnter the coefficient for %s\n",b->name);
     do{
         printf("\t-> ");
-        read=scanf("%f",&c2);
+        read=scanf("%lf",&c2);
         clear_buffer();
         if(read!=1){
             printf("Invalid input. Please try again\n");
@@ -568,8 +619,8 @@ void m_dot_prod(object total[], const int counter){
         printf("ERROR: the two vectors do not have the same length\n");
         return;
     }
-    float p=dot_prod(*a,*b);
-    printf("<%s,%s> = %f\n\n",a->name,b->name,p);
+    double p=dot_prod(*a,*b);
+    printf("<%s,%s> = %10g\n\n",a->name,b->name,p);
 }
 
 void m_norm(object total[],const int counter){
@@ -587,8 +638,8 @@ void m_norm(object total[],const int counter){
         printf("ERROR: object %s is not a vector\n",v->name);
         return;
     }
-    float n=norm(*v);
-    printf("||%s|| = %f\n\n",v->name,n);
+    double n=norm(*v);
+    printf("||%s|| = %10g\n\n",v->name,n);
 }
 
 void m_cr_prod(object total[], int* counter){
@@ -665,8 +716,8 @@ void m_trace(object total[], const int counter){
         printf("ERROR: non-square matrix\n\n");
         return;
     }
-    float t=tr(*m);
-    printf("tr(%s) = %f\n\n",m->name,t);
+    double t=tr(*m);
+    printf("tr(%s) = %10g\n\n",m->name,t);
 }
 
 void m_power(object total[], int* counter){
@@ -719,7 +770,7 @@ void m_power(object total[], int* counter){
 }
 
 void m_eigen(object total[], int* counter){
-    full_reg_check(*counter);
+    if(full_reg_check(*counter)) return;
     char s[SD];
     object *m;
     printf("Enter the name of the square matrix\n\t-> ");
@@ -744,10 +795,10 @@ void m_eigen(object total[], int* counter){
     }
     const int max_iter=1000; //cap on the number of QR iterations
     int error_code;
-    float* r_eig=(float*)malloc(n * sizeof(float));
+    double* r_eig=(double*)malloc(n * sizeof(double));
     int n_rl;
-    float* Re=(float*)malloc((n / 2 + 1) * sizeof(float));
-    float* Im=(float*)malloc((n / 2 + 1) * sizeof(float));
+    double* Re=(double*)malloc((n / 2 + 1) * sizeof(double));
+    double* Im=(double*)malloc((n / 2 + 1) * sizeof(double));
     if (r_eig == NULL || Re == NULL || Im == NULL) {
         printf("CRITICAL ERROR: memory allocation failed\n\n");
         free(r_eig); free(Re); free(Im);
@@ -772,7 +823,7 @@ void m_eigen(object total[], int* counter){
         else{
             printf("Real eigenvalues:\n");
             for(i=0; i<n_rl; i++){
-                printf("r%d = %f \n",i+1,r_eig[i]);
+                printf("r%d = %lf \n",i+1,r_eig[i]);
             }
         }
         if(n_compl==0) printf("No complex eigenvalues were succesfully computed before the unresolved block\n");
@@ -780,7 +831,7 @@ void m_eigen(object total[], int* counter){
             printf("Complex eigenvalues:\n");
             int j = 0;
             for(i=0; i<n_compl; i++){
-                printf("z%d,%d = %f +/- %fi\n", j+1, j+2, Re[i], Im[i]);
+                printf("z%d,%d = %lf +/- %lfi\n", j+1, j+2, Re[i], Im[i]);
                 j+=2;
             }
             printf("Any eigenvalues listed above are successfully resolved. The unresolved block has been left in the matrix below:\n");
@@ -793,14 +844,14 @@ void m_eigen(object total[], int* counter){
         if (n_rl > 0) {
         printf("\nReal eigenvalues:\n");
         for (int i = 0; i < n_rl; i++) {
-            printf("r%d = %f\n", i + 1, r_eig[i]);
+            printf("r%d = %lf\n", i + 1, r_eig[i]);
         }
         }
         if (n_compl > 0) {
             int j=0;
             printf("\nComplex eigenvalues:\n");
             for (int i = 0; i < n_compl; i++) {
-                printf("z%d,%d = %f +/- %fi\n", j+1,j+2, Re[i], Im[i]);
+                printf("z%d,%d = %lf +/- %lfi\n", j+1,j+2, Re[i], Im[i]);
                 j+=2;
             }
         }

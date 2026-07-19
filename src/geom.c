@@ -4,6 +4,8 @@
 #include <string.h>
 #include <math.h>
 
+int precision=6;
+
 int sum_check(object *a, object *b){ //checks the dimensions for a sum/difference
     return ((a->row==b->row)&&(a->col==b->col));
 }
@@ -31,16 +33,16 @@ object* search_obj(object total[], int counter, const char* nm) {
     return res; // Returns the pointer to the found object, or NULL if it does not exist
 }
 
-float det(object m){ //I use Gauss-Jordan elimination, O(n^3) complexity
+double det(object m){ //I use Gauss-Jordan elimination, O(n^3) complexity
     int n = m.row;
     if (n == 1) {
         return m.dat[0];
     }
     // I create a local copy of the data to do Gauss-Jordan operations
-    float* copy = (float*)malloc(n * n * sizeof(float));
+    double* copy = (double*)malloc(n * n * sizeof(double));
     if (copy == NULL) return NAN;
-    memcpy(copy, m.dat, n * n * sizeof(float)); //copy of the data
-    float det_val = 1.0f;
+    memcpy(copy, m.dat, n * n * sizeof(double)); //copy of the data
+    double det_val = 1.0;
     for (int i = 0; i < n; i++) {
         //Search for the maximum element on COLUMN i
         int pivot = i;
@@ -55,22 +57,22 @@ float det(object m){ //I use Gauss-Jordan elimination, O(n^3) complexity
         /* If the max element is almost zero, the matrix has a row with only zeros
         or linearly dependent rows: the determinant is zero. (The control is on 
         "almost zero" again to avoid errors in division by 0)*/
-        if (fabs(copy[pivot * n + i]) < 1e-6f) {
+        if (fabs(copy[pivot * n + i]) < 1e-15) {
             free(copy);
-            return 0.0f;
+            return 0.0;
         }
         // If necessary, we swap the current row with the pivot row
         if (pivot != i) {
-            float temp;
+            double temp;
             for (int j = 0; j < n; j++) {
                 temp = copy[i * n + j];
                 copy[i * n + j] = copy[pivot * n + j];
                 copy[pivot * n + j] = temp;
             }
-            det_val *= -1.0f; // The row swap inverts the sign of the determinant
+            det_val *= -1.0; // The row swap inverts the sign of the determinant
         }
         //Gaussian elimination
-        float fatt;
+        double fatt;
         for (int k = i + 1; k < n; k++) {
             fatt = copy[k * n + i] / copy[i * n + i]; //factor between row i (with pivot) and each row k
             for (int j = i; j < n; j++) {
@@ -86,11 +88,11 @@ float det(object m){ //I use Gauss-Jordan elimination, O(n^3) complexity
 
 void enter_data(object m){
     int n=m.row*m.col;
-    float f;
+    double f;
     int i=0,v;
     printf("Enter items from keyboard (press enter after each item)\n\n");
     while(i<n){
-        v=scanf("%f",&f);
+        v=scanf("%lf",&f);
         if(v!=1){
             printf("Not a valid value. Please try again\n\n");
             clear_buffer();
@@ -133,7 +135,7 @@ object create(object total[], const int counter){
         }
     }while(read!= 1 || M.col<=0);
     printf("Entering data\n");
-    M.dat=(float*)malloc(M.row*M.col*sizeof(float));
+    M.dat=(double*)malloc(M.row*M.col*sizeof(double));
     if (M.dat == NULL) {
         printf("CRITICAL ERROR: Insufficient memory!\n");
         exit(1);
@@ -143,20 +145,34 @@ object create(object total[], const int counter){
 }
 
 void print_obj(object m){
+    /*this for cycle basically finds the elements with the max char-length,
+    so the next for cycle is going to know the number of characters to print 
+    for every element*/
     int i,j,k;
+    int max_len=0;
+    int tot_el= m.row*m.col;
+    for(i=0;i<tot_el;i++) {
+        int len=snprintf(NULL,0,"%.*g",precision,m.dat[i]); 
+        /*snprintf with NULL and 0 only reads the char-length 
+        of every element when printed (saved in len)*/
+        if(len>max_len){
+            max_len=len;  
+        }
+    }
+    if (max_len<precision) max_len = precision; //minimum safe value for length
     printf("\n\t%s\n\n",m.name);
     for(i=0;i<m.row;i++){
         k=i*m.col;
         printf("| ");
         for(j=0;j<m.col;j++){
-            printf("%6.2f  ",m.dat[k+j]);
+            printf("%*.*g  ",max_len,precision,m.dat[k+j]);
         }
         printf("|\n");
     }
 }
 
 void del_obj(object total[],int *counter, object* m){
-    free(m->dat); //Freeing float allocation
+    free(m->dat); //Freeing double allocation
     int index= m-total;
     for(int i=index;i<(*counter)-1;i++){
         total[i]=total[i+1];
@@ -164,7 +180,7 @@ void del_obj(object total[],int *counter, object* m){
     (*counter)--;
 }
 
-object* lin_comb_obj(object a, object b, const float a_coef, const float b_coef, const char* new_name){
+object* lin_comb_obj(object a, object b, const double a_coef, const double b_coef, const char* new_name){
     //Function for linear combination. It's also used for a simple sum or difference.
     object *s;
     s=(object*)malloc(sizeof(object));
@@ -173,7 +189,7 @@ object* lin_comb_obj(object a, object b, const float a_coef, const float b_coef,
     s->row=a.row;
     s->col=a.col;
     int n_el=s->row*s->col;
-    s->dat=(float*)malloc(n_el*sizeof(float));
+    s->dat=(double*)malloc(n_el*sizeof(double));
     if (s->dat == NULL) return NULL;
     for(int i=0;i<n_el;i++){
         s->dat[i]=(a_coef * a.dat[i])+(b_coef * b.dat[i]);
@@ -181,14 +197,14 @@ object* lin_comb_obj(object a, object b, const float a_coef, const float b_coef,
     return s;
 }
 
-object* scalar_mul(float x, object M, const char* new_name){
+object* scalar_mul(double x, object M, const char* new_name){
     object *P=(object*)malloc(sizeof(object));
     if(P==NULL) return NULL;
     strcpy(P->name,new_name);
     P->row=M.row;
     P->col=M.col;
     int n_el=M.row*M.col;
-    P->dat=(float*)malloc(n_el*sizeof(float));
+    P->dat=(double*)malloc(n_el*sizeof(double));
     if(P->dat==NULL){
         free(P);
         return NULL;
@@ -208,13 +224,13 @@ object* mul_obj(object a, object b, const char* new_name){
     m->row=a.row;
     m->col=b.col;
     int n_el=m->row*m->col;
-    m->dat=(float*)malloc(n_el*sizeof(float));
+    m->dat=(double*)malloc(n_el*sizeof(double));
     if (m->dat == NULL) return NULL;
     for(i=0;i<m->row;i++){
         int row_A = i * a.col;
         int row_M = i * m->col;
         for(j=0;j<m->col;j++){
-            float sum = 0.0f;
+            double sum = 0.0;
             for(k=0;k<a.col;k++){
                 int row_B = k * b.col;
                 sum += a.dat[row_A + k] * b.dat[row_B + j];
@@ -232,15 +248,15 @@ object* create_identity(const int n) {
     I->row = n;
     I->col = n;
     int n_el = n * n;
-    I->dat = (float*)malloc(n_el * sizeof(float));
+    I->dat = (double*)malloc(n_el * sizeof(double));
     if (I->dat == NULL) return NULL;
     // Initializing the matrix: 1 on the main diagonal, 0 elsewhere
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             if (i == j) {
-                I->dat[i * n + j] = 1.0f; // Main diagonal
+                I->dat[i * n + j] = 1.0; // Main diagonal
             } else {
-                I->dat[i * n + j] = 0.0f; // Other elements
+                I->dat[i * n + j] = 0.0; // Other elements
             }
         }
     }
@@ -256,7 +272,7 @@ object* transpose_obj(object M, const char* new_name) {
     T->row = M.col; 
     T->col = M.row;   //invert dimensions
     int n_el = T->row * T->col;
-    T->dat = (float*)malloc(n_el * sizeof(float));
+    T->dat = (double*)malloc(n_el * sizeof(double));
     if (T->dat == NULL) {
         free(T); 
         return NULL;
@@ -279,12 +295,12 @@ object* cat_obj(object total[], const int counter, object A, object B, char dir)
         C->row=A.row;
         C->col=A.col+B.col;
         int n_el= C->row * C->col;
-        C->dat=(float*) malloc( n_el * sizeof(float));
+        C->dat=(double*) malloc( n_el * sizeof(double));
         if(C->dat==NULL){
             free(C);
             return NULL;
         }
-        /*In this case I used for loops to save floats, since they will be saved in a "crossed" way: 
+        /*In this case I used for loops to save doubles, since they will be saved in a "crossed" way: 
         line 1 of A, line 1 of B, line 2 of A, line 2 of B, etc.*/
         int i,j;
         for(i=0;i<C->row;i++){ //scrolls through the rows
@@ -301,17 +317,17 @@ object* cat_obj(object total[], const int counter, object A, object B, char dir)
         C->row=A.row+B.row;
         C->col=A.col;
         int n_el= C->row * C->col;
-        C->dat=(float*) malloc( n_el * sizeof(float));
+        C->dat=(double*) malloc( n_el * sizeof(double));
         if(C->dat==NULL){
             free(C);
             return NULL;
         }
-        /*In this case I used memcpy to save floats, since they will 
+        /*In this case I used memcpy to save doubles, since they will 
         be saved as matrix A, matrix B*/
         int n_el_A=A.row * A.col;
         int n_el_B=B.row * B.col;
-        memcpy(C->dat,A.dat,n_el_A * sizeof(float));
-        memcpy(C->dat + n_el_A, B.dat, n_el_B * sizeof(float));
+        memcpy(C->dat,A.dat,n_el_A * sizeof(double));
+        memcpy(C->dat + n_el_A, B.dat, n_el_B * sizeof(double));
         return C;
     }
     //Just in case dir is wrong:
@@ -321,17 +337,17 @@ object* cat_obj(object total[], const int counter, object A, object B, char dir)
     return NULL;
 }
 
-float dot_prod(object u, object v){
+double dot_prod(object u, object v){
     int len=u.row*u.col;
-    float res=0.0f;
+    double res=0.0;
     for(int i=0;i<len;i++){
         res+= u.dat[i]*v.dat[i];
     }
     return res;
 }
 
-float norm(object v){
-    float res=sqrtf(dot_prod(v,v));
+double norm(object v){
+    double res=sqrt(dot_prod(v,v));
     return res;
 }
 
@@ -341,7 +357,7 @@ object* cr_prod(object u, object v, const char* new_name){
     strcpy(p->name,new_name);
     p->row=3;
     p->col=1;
-    p->dat=(float*)malloc(3*sizeof(float));
+    p->dat=(double*)malloc(3*sizeof(double));
     if(p->dat==NULL){
         free(p);
         return NULL;
@@ -365,7 +381,7 @@ object* invert_obj(object M, const char* new_name, int *error_code){
     strcpy(Inv->name,new_name);
     Inv->row = n;
     Inv->col = n;
-    Inv->dat = (float*)malloc(n * n * sizeof(float));
+    Inv->dat = (double*)malloc(n * n * sizeof(double));
     if (Inv->dat == NULL) {
         free(Inv);
         *error_code=1;
@@ -375,7 +391,7 @@ object* invert_obj(object M, const char* new_name, int *error_code){
     object aug;
     aug.row = n;
     aug.col = 2 * n; // The number of columns doubles of course
-    aug.dat = (float*)malloc(aug.row * aug.col * sizeof(float));
+    aug.dat = (double*)malloc(aug.row * aug.col * sizeof(double));
     if (aug.dat == NULL) {
         free(Inv->dat);
         free(Inv);
@@ -386,7 +402,7 @@ object* invert_obj(object M, const char* new_name, int *error_code){
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             aug.dat[i * aug.col + j] = M.dat[i * n + j]; //left part: matrix A      
-            aug.dat[i * aug.col + (j + n)] =( (i == j) ? 1.0f : 0.0f); //right part: identity matrix
+            aug.dat[i * aug.col + (j + n)] =( (i == j) ? 1.0 : 0.0); //right part: identity matrix
         }
     }
 
@@ -395,9 +411,9 @@ object* invert_obj(object M, const char* new_name, int *error_code){
     for (int i = 0; i < n; i++) {
         //STEP 1: Partial Pivoting
         int pivot_col = i;
-        float max_val = fabs(aug.dat[i * aug.col + i]);
+        double max_val = fabs(aug.dat[i * aug.col + i]);
         for (int r = i + 1; r < n; r++) {
-            float val = fabs(aug.dat[r * aug.col + i]);
+            double val = fabs(aug.dat[r * aug.col + i]);
             if (val > max_val) {
                 max_val = val;
                 pivot_col = r;
@@ -407,7 +423,7 @@ object* invert_obj(object M, const char* new_name, int *error_code){
         Gauss-Jordan elimination has O(n^3) complexity, so if I used the determinant function
         in the majority of cases i would be doing the same computations twice, with a complexity 
         of 2*O(n^3).*/
-        if (max_val < 1e-6f) { 
+        if (max_val < 1e-15) { 
             free(aug.dat);
             free(Inv->dat);
             free(Inv);
@@ -416,14 +432,14 @@ object* invert_obj(object M, const char* new_name, int *error_code){
         }
         if (pivot_col != i) {
             for (int c = 0; c < aug.col; c++) {
-                float temp = aug.dat[i * aug.col + c];
+                double temp = aug.dat[i * aug.col + c];
                 aug.dat[i * aug.col + c] = aug.dat[pivot_col * aug.col + c];
                 aug.dat[pivot_col * aug.col + c] = temp;
             }
         }
 
         //STEP 2: normalization of the pivot line
-        float pivot_div = aug.dat[i * aug.col + i];
+        double pivot_div = aug.dat[i * aug.col + i];
         for (int c = i; c < aug.col; c++) { 
             aug.dat[i * aug.col + c] /= pivot_div;
         }
@@ -431,7 +447,7 @@ object* invert_obj(object M, const char* new_name, int *error_code){
         //STEP 3: Removing the other columns
         for (int r = 0; r < n; r++) {
             if (r != i) {
-                float factor = aug.dat[r * aug.col + i];
+                double factor = aug.dat[r * aug.col + i];
                 for (int c = i; c < aug.col; c++) {
                     aug.dat[r * aug.col + c] -= factor * aug.dat[i * aug.col + c];
                 }
@@ -471,8 +487,8 @@ object* power(object M, int ex, const char* new_name){
     return p;
 }
 
-float tr(object M){
-    float sum=0.0f;
+double tr(object M){
+    double sum=0.0;
     for(int i=0;i<M.col;i++){
         sum+=M.dat[i*M.col +i];
     }
@@ -486,7 +502,7 @@ float tr(object M){
 
 /*Helper function qr_decomp() is used only internally by qr_diag_obj().
 Performs the QR decomposition of a square n x n matrix stored as a "raw"
-float array in row-major order (same philosophy as "copy" inside det()
+double array in row-major order (same philosophy as "copy" inside det()
 and "aug" inside invert_obj(): here I work on plain arrays, not on object,
 and it's the calling function that takes care of malloc/free and error
 checking).
@@ -502,10 +518,10 @@ upper triangular.
 
 v is a scratch vector (of length n) already allocated by the caller: I reuse
 it for every column to avoid doing malloc/free n times inside the loop.*/
-void qr_decomp(float *A, float *Q, float *R, float *v, int n){
+void qr_decomp(double *A, double *Q, double *R, double *v, int n){
     //R is upper triangular: I zero it out right away, so I only need to
     //write the elements on and above the diagonal
-    for(int i=0;i<n*n;i++) R[i]=0.0f;
+    for(int i=0;i<n*n;i++) R[i]=0.0;
     for(int j=0;j<n;j++){ //j walks through the columns of A (and of Q)
         //copying column j of A into v (A is stored by rows, so element
         for(int i=0;i<n;i++){
@@ -513,7 +529,7 @@ void qr_decomp(float *A, float *Q, float *R, float *v, int n){
         }
         //removing from v the components already "covered" by the previous columns of Q
         for(int i=0;i<j;i++){
-            float projection=0.0f;
+            double projection=0.0;
             for(int k=0;k<n;k++){
                 projection += Q[k*n+i]*v[k]; //dot product between column i of Q and v
             }
@@ -528,13 +544,13 @@ void qr_decomp(float *A, float *Q, float *R, float *v, int n){
         tmp.row = n;
         tmp.col = 1;
         tmp.dat = v;
-        float col_norm = norm(tmp);
+        double col_norm = norm(tmp);
         R[j*n+j]=col_norm;
         //normalize v to get column j of Q. If the norm is almost zero the
         //columns of A are linearly dependent (non-invertible matrix): avoid
         //the division by 0 exactly like det() and invert_obj() already do
         for(int k=0;k<n;k++){
-            Q[k*n+j] = (col_norm>1e-6f) ? v[k]/col_norm : 0.0f;
+            Q[k*n+j] = (col_norm>1e-15) ? v[k]/col_norm : 0.0;
         }
     }
 }
@@ -548,14 +564,14 @@ allocated buffer with the new, smaller stride, and frees the old one (Aw
 itself, not the caller's matrix, so this never touches M).
 Returns the new, compacted buffer (or NULL if malloc fails, in which case Aw
 has already been freed).*/
-float* shrink_matrix(float *Aw, int m, int k){
+double* shrink_matrix(double *Aw, int m, int k){
     int new_m=m-k;
     if(new_m==0){
         //nothing left to work on: no need to allocate an empty buffer
         free(Aw);
         return NULL;
     }
-    float *shrunk=(float*)malloc(new_m*new_m*sizeof(float));
+    double *shrunk=(double*)malloc(new_m*new_m*sizeof(double));
     if(shrunk==NULL){
         free(Aw);
         return NULL;
@@ -569,7 +585,7 @@ float* shrink_matrix(float *Aw, int m, int k){
     return shrunk;
 }
 
-object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code,float* r_eig, int* n_rl, float* RE, float* IM, int* n_compl){
+object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code,double* r_eig, int* n_rl, double* RE, double* IM, int* n_compl){
     /*Computes the eigenvalues of a square matrix with the QR algorithm,with a shift 
     and with a deflation. An unshifted QR step only separates two eigenvalues
     at a rate that depends on |lambda_(i+1)/lambda_i|, so if two eigenvalues
@@ -642,7 +658,7 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
     strcpy(D->name,new_name);
     D->row=n;
     D->col=n;
-    D->dat=(float*)malloc(n*n*sizeof(float));
+    D->dat=(double*)malloc(n*n*sizeof(double));
     if(D->dat==NULL){
         free(D);
         *error_code=1;
@@ -654,21 +670,21 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
     //there's no need to resize them as m shrinks: allocating them once at
     //the largest possible size (n) and just using their leading m*m/m part
     //is enough. tmp is the scratch buffer for the R*Q product.
-    float *Q=(float*)malloc(n*n*sizeof(float));
-    float *R=(float*)malloc(n*n*sizeof(float));
-    float *v=(float*)malloc(n*sizeof(float));
-    float *tmp=(float*)malloc(n*n*sizeof(float));
+    double *Q=(double*)malloc(n*n*sizeof(double));
+    double *R=(double*)malloc(n*n*sizeof(double));
+    double *v=(double*)malloc(n*sizeof(double));
+    double *tmp=(double*)malloc(n*n*sizeof(double));
     //Aw is the active working matrix: it starts as a full copy of M (m=n)
     //and gets repacked into smaller and smaller buffers by shrink_matrix()
     //every time a deflation happens
-    float *Aw=(float*)malloc(n*n*sizeof(float));
+    double *Aw=(double*)malloc(n*n*sizeof(double));
     if(Q==NULL || R==NULL || v==NULL || tmp==NULL || Aw==NULL){
         free(Q); free(R); free(v); free(tmp); free(Aw);
         free(D->dat); free(D);
         *error_code=1;
         return NULL;
     }
-    memcpy(Aw,M.dat,n*n*sizeof(float));
+    memcpy(Aw,M.dat,n*n*sizeof(double));
 
     int m=n; //current size of the active working matrix
     int total_iters=0;
@@ -698,7 +714,7 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
         to be checked.*/
         int can_deflate1=1;
         for(int j=0;j<m-1;j++){
-            if(fabs(Aw[(m-1)*m+j]) > 1e-6f){ can_deflate1=0; break; }
+            if(fabs(Aw[(m-1)*m+j]) > 1e-15){ can_deflate1=0; break; }
         }
         if(can_deflate1){
             r_eig[*n_rl]=Aw[(m-1)*m+(m-1)];
@@ -720,28 +736,28 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
         if(m>2){
             can_deflate2=1;
             for(int j=0;j<m-2;j++){
-                if(fabs(Aw[(m-2)*m+j])>1e-6f || fabs(Aw[(m-1)*m+j])>1e-6f){
+                if(fabs(Aw[(m-2)*m+j])>1e-15 || fabs(Aw[(m-1)*m+j])>1e-15){
                     can_deflate2=0; 
                     break; 
                 }
             }
         }
         if(can_deflate2){
-            float a=Aw[(m-2)*m+(m-2)], b=Aw[(m-2)*m+(m-1)];
-            float c=Aw[(m-1)*m+(m-2)], d=Aw[(m-1)*m+(m-1)];
-            float trace=a+d;
-            float deter=(a*d)-(b*c);
-            float discriminant=(trace*trace)-(4.0f*deter);
-            if(discriminant < -1e-6f){
-                RE[*n_compl]=trace/2.0f;
-                IM[*n_compl]=sqrtf(-discriminant)/2.0f;
+            double a=Aw[(m-2)*m+(m-2)], b=Aw[(m-2)*m+(m-1)];
+            double c=Aw[(m-1)*m+(m-2)], d=Aw[(m-1)*m+(m-1)];
+            double trace=a+d;
+            double deter=(a*d)-(b*c);
+            double discriminant=(trace*trace)-(4.0*deter);
+            if(discriminant < -1e-15){
+                RE[*n_compl]=trace/2.0;
+                IM[*n_compl]=sqrt(-discriminant)/2.0;
                 (*n_compl)++;
             }
             else{
-                if(discriminant<0.0f) discriminant=0.0f; //rounding noise around a real double root
-                float sqrt_discr=sqrtf(discriminant);
-                r_eig[*n_rl]=(trace+sqrt_discr)/2.0f; (*n_rl)++;
-                r_eig[*n_rl]=(trace-sqrt_discr)/2.0f; (*n_rl)++;
+                if(discriminant<0.0) discriminant=0.0; //rounding noise around a real double root
+                double sqrt_discr=sqrt(discriminant);
+                r_eig[*n_rl]=(trace+sqrt_discr)/2.0; (*n_rl)++;
+                r_eig[*n_rl]=(trace-sqrt_discr)/2.0; (*n_rl)++;
             }
             int new_m=m-2;
             Aw=shrink_matrix(Aw,m,2);
@@ -766,16 +782,16 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
         //("Rayleigh quotient") shift instead -- it still drives the OUTER
         //coupling to zero even though it can't shrink the pair itself, which
         //is exactly what the isolation check above is waiting for
-        float a=Aw[(m-2)*m+(m-2)], b=Aw[(m-2)*m+(m-1)];
-        float c=Aw[(m-1)*m+(m-2)], d=Aw[(m-1)*m+(m-1)];
-        float trace=a+d;
-        float deter=(a*d)-(b*c);
-        float discriminant=(trace*trace)-(4.0f*deter);
-        float mu;
-        if(discriminant>=0.0f){
-            float sqrt_discr=sqrtf(discriminant);
-            float lambda1=(trace+sqrt_discr)/2.0f;
-            float lambda2=(trace-sqrt_discr)/2.0f;
+        double a=Aw[(m-2)*m+(m-2)], b=Aw[(m-2)*m+(m-1)];
+        double c=Aw[(m-1)*m+(m-2)], d=Aw[(m-1)*m+(m-1)];
+        double trace=a+d;
+        double deter=(a*d)-(b*c);
+        double discriminant=(trace*trace)-(4.0*deter);
+        double mu;
+        if(discriminant>=0.0){
+            double sqrt_discr=sqrt(discriminant);
+            double lambda1=(trace+sqrt_discr)/2.0;
+            double lambda2=(trace-sqrt_discr)/2.0;
             mu=(fabs(lambda1-d) < fabs(lambda2-d)) ? lambda1 : lambda2;
         }
         else{
@@ -786,14 +802,14 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
         qr_decomp(Aw,Q,R,v,m);
         for(int ii=0; ii<m; ii++){
             for(int jj=0; jj<m; jj++){
-                float sum=0.0f;
+                double sum=0.0;
                 for(int kk=0;kk<m;kk++){
                     sum += R[ii*m+kk]*Q[kk*m+jj];
                 }
                 tmp[ii*m+jj]=sum;
             }
         }
-        memcpy(Aw,tmp,m*m*sizeof(float));
+        memcpy(Aw,tmp,m*m*sizeof(double));
         for(int k=0;k<m;k++) Aw[k*m+k]+=mu; //unshift: back to A_(k+1) = R*Q + mu*I
         total_iters++;
     }
@@ -806,7 +822,7 @@ object* qr_diag_obj(object M,int max_iter, const char* new_name, int *error_code
     //as the real Schur form: trace=2*RE, determinant=RE^2+IM^2), so printing
     //D always shows something meaningful even though 'object' can only hold
     //real numbers
-    for(int idx=0; idx<n*n; idx++) D->dat[idx]=0.0f;
+    for(int idx=0; idx<n*n; idx++) D->dat[idx]=0.0;
     int pos=0;
     for(int k=0;k<*n_rl;k++){
         D->dat[pos*n+pos]=r_eig[k];

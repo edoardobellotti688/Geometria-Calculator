@@ -1,3 +1,4 @@
+#include "tech.h"
 #include "geom.h"
 #include <string.h>
 #include <stdio.h>
@@ -10,6 +11,25 @@ void file_error_msg(){
     printf("For more information, open 'README.md' inside the program folder\n");
 }
 
+int file_exists(const char* filename){
+    return(access(filename,F_OK)==0);
+}
+
+void create_file(const char* filename){
+    FILE* fp=fopen(filename,"wbx");
+    if(fp==NULL) {
+        printf("File '%s' couldn't be created\n\n",filename);
+        return;
+    }
+    char version[8]="GE1.1";
+    int num=0;
+    /*File formatting is needed to make load() able to read it*/
+    fwrite(version,8,1,fp);
+    fwrite(&num, sizeof(int),1,fp);
+    fclose(fp);
+    printf("File '%s' created successfully\n\n",filename);
+}
+
 void save(const char* filename, object total[], const int num){
     FILE* fp;
     fp=fopen(filename,"wb");
@@ -17,13 +37,15 @@ void save(const char* filename, object total[], const int num){
         printf("ERROR: data file couldn't be opened\n\n");
         exit(-1);
     }
-    fwrite(&num, sizeof(int),1,fp); //the first thing in the file will be the logical dimension for total[]
+    char version[8]="GE1.1";
+    fwrite(version,8,1,fp); //the first thing in the file is the "magic number" (version of the program)
+    fwrite(&num, sizeof(int),1,fp); //the second thing in the file is the logical dimension for total[]
     for(int i=0;i<num;i++){
         fwrite(total[i].name,sizeof(char),SD,fp);
         fwrite(&(total[i].row),sizeof(int),1,fp);
         fwrite(&(total[i]).col,sizeof(int),1,fp); //saved: name, number of columns and columns
         int n_el= total[i].row * total[i].col; //number of elements
-        fwrite(total[i].dat,sizeof(float),n_el,fp); //writing elements sequentially
+        fwrite(total[i].dat,sizeof(double),n_el,fp); //writing elements sequentially
     }
     fclose(fp);
     printf("Current objects were successfully saved (%d items)!\n\n",num);
@@ -35,6 +57,12 @@ void load(const char* filename, object total[], int *num){
     if(fp==NULL){
         file_error_msg();
         return;
+    }
+    char version[8];
+    fread(version,8,1,fp);
+    if(strcmp(version,"GE1.1")!=0){
+        printf("CRITICAL ERROR: data file is either corrupt or has saved data from old versions of Geometria\n");
+        exit(1);
     }
     if(fread(num,sizeof(int),1,fp)!=1){ //reading the logical dimension of the array
         *num=0;
@@ -51,12 +79,18 @@ void load(const char* filename, object total[], int *num){
         fread(&(total[i].row),sizeof(int),1,fp);
         fread(&(total[i]).col,sizeof(int),1,fp);
         int n_el= total[i].row * total[i].col;
-        total[i].dat=(float*)malloc(n_el*sizeof(float));
+        total[i].dat=(double*)malloc(n_el*sizeof(double));
         if(total[i].dat==NULL){
             printf("CRITICAL ERROR: memory allocation for data from file failed\n\n");
-            exit(1);
+            exit(3);
         }
-        fread(total[i].dat,sizeof(float),n_el,fp);
+        if(fread(total[i].dat,sizeof(double),n_el,fp)!=n_el){
+            printf("CRITICAL ERROR: data file is corrupt (while reading matrix '%s')\n", total[i].name);
+            free(total[i].dat);
+            *num = i;
+            fclose(fp);
+            return;
+        }
     }
     fclose(fp);
     printf("Previous objects were loaded correctly (%d objects)\n\n",*num);
