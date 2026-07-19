@@ -117,7 +117,7 @@ A 4-byte integer (`int`) representing the total number of stored objects.
 | Object name | 4-byte ASCII string (maximum 3 characters + `\0`) |
 | Rows | 4-byte integer |
 | Columns | 4-byte integer |
-| Matrix elements | Sequential 4-byte `float` values |
+| Matrix elements | Sequential 8-byte `double` values |
 
 The number of stored floating-point values must equal:
 
